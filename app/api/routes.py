@@ -4,7 +4,7 @@ from typing import Optional
 import secrets
 import asyncio
 from app.config import settings
-from app.workflows.process_post import process_row
+from app.workflow.process_post import process_row
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,7 +22,7 @@ class ProcessRequest(BaseModel):
     row_id: int = Field(..., gt=0, description="The Google Sheet row index")
 
 
-@router.post("/process", dependencies =[validate_internal_token])
+@router.post("/process", dependencies=[Depends(validate_internal_token)])
 async def process_post(
     request: ProcessRequest,
 ):
