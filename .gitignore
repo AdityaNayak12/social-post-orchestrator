@@ -29,6 +29,8 @@ venv.bak/
 .env.*
 !.env.example
 
+social-post-orchestrator.json
+
 # ----------------------------
 # Logs
 # ----------------------------
