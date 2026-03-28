@@ -1,18 +1,13 @@
-import random
-import time
 from httpx import Timeout
 from groq import Groq, RateLimitError, APIError, APITimeoutError
 from app.config import settings
 from app.core.exception import TransientError, DeterministicError
 from app.core.logger import get_logger
+from app.core.retry import retry_on_transient
 
 logger = get_logger(__name__)
 
 SYSTEM_PROMPT = "Shorten and transform this text into a catchy Instagram caption. Add relevant hashtags. Keep it concise."
-
-
-def _jitter(delay: float) -> float:
-    return delay * (0.5 + random.random() * 0.5)
 
 
 class LLMClient:
@@ -28,22 +23,19 @@ class LLMClient:
         if not text or not text.strip():
             raise DeterministicError("Empty text provided", stage="llm_transform")
 
-        last_error = None
-        for attempt in range(self.max_retries + 1):
-            try:
-                return self._call_api(text)
-            except TransientError as e:
-                last_error = e
-                if attempt < self.max_retries:
-                    delay = 2 ** attempt
-                    sleep_time = _jitter(delay)
-                    logger.warning(f"Transient error, retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{self.max_retries + 1})")
-                    time.sleep(sleep_time)
-                else:
-                    logger.error(f"Max retries ({self.max_retries}) exceeded for LLM call")
-                    raise
-
-        raise last_error or TransientError("Max retries exceeded", stage="llm_transform")
+        return retry_on_transient(
+            lambda: self._call_api(text),
+            max_retries=self.max_retries,
+            backoff="exponential",
+            exponential_base=2.0,
+            jitter=True,
+            on_retry=lambda attempt, sleep_time, _exc: logger.warning(
+                f"Transient error, retrying in {sleep_time:.2f}s (attempt {attempt + 1}/{self.max_retries + 1})"
+            ),
+            on_exhausted=lambda _exc: logger.error(
+                f"Max retries ({self.max_retries}) exceeded for LLM call"
+            ),
+        )
 
     def _call_api(self, text: str) -> str:
         try:
