@@ -1,7 +1,7 @@
 from app.core.logger import get_logger
-from app.core.retry import retry_once
 from app.core.exception import DeterministicError
 from app.services.sheet_client import SheetClient
+from app.services.llm_client import llm_client
 
 
 logger = get_logger(__name__)
@@ -23,7 +23,7 @@ def process_row(row_id: int):
         
         sheet.update_status(row_id, "processing")
 
-        transformed_caption = retry_once(transform_stub,row["post_text"])
+        transformed_caption = llm_client.transform_caption(row["post_text"])
 
         instagram_post_id = "23523523" #hardcoded random id
 
