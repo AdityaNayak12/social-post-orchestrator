@@ -28,6 +28,11 @@ class Settings: #should i be calling the settings as a class? it would only work
     GROQ_TIMEOUT_SECONDS: int = get_int_env("GROQ_TIMEOUT_SECONDS", 20)
     GROQ_MAX_RETRIES: int = get_int_env("GROQ_MAX_RETRIES", 1)
 
+    INSTAGRAM_ACCOUNT_ID: str = get_str_env("INSTAGRAM_ACCOUNT_ID")
+    FACEBOOK_PAGE_ACCESS_TOKEN: str = get_str_env("FACEBOOK_PAGE_ACCESS_TOKEN")
+    INSTAGRAM_TIMEOUT_SECONDS: int = get_int_env("INSTAGRAM_TIMEOUT_SECONDS", 30)
+    INSTAGRAM_MAX_RETRIES: int = get_int_env("INSTAGRAM_MAX_RETRIES", 3)
+
     if not INTERNAL_TOKEN:
         raise ValueError("INTERNAL_TOKEN must be set in environment variables")
     if not GROQ_API_KEY:
