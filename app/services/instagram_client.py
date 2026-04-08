@@ -80,40 +80,51 @@ class InstagramClient:
         self.timeout = settings.INSTAGRAM_TIMEOUT_SECONDS
         self.max_retries = settings.INSTAGRAM_MAX_RETRIES
 
-    def publish_post(self, caption: str, image_url: str | None = None) -> str:
+    def publish_post(self, caption: str, image_url: str) -> str:
         if not caption or not caption.strip():
             raise DeterministicError("Empty caption provided", stage="instagram_publish")
+        if not image_url or not image_url.strip():
+            raise DeterministicError(
+                "image_url is required for Instagram publish via /media endpoint",
+                stage="instagram_publish"
+            )
 
         stats = instagram_rate_limiter.get_stats()
         logger.info(f"Instagram rate limit: {stats['requests_remaining']} requests remaining")
 
-        return retry_on_transient(
-            lambda: self._publish(caption, image_url),
+        container_id = retry_on_transient(
+            lambda: self._create_image_container(caption, image_url),
             max_retries=self.max_retries,
             backoff="exponential",
             exponential_base=2.0,
             jitter=True,
             on_retry=lambda attempt, sleep, _exc: logger.warning(
-                f"Retrying Instagram publish in {sleep:.2f}s (attempt {attempt + 1}/{self.max_retries + 1})"
+                f"Retrying Instagram container creation in {sleep:.2f}s "
+                f"(attempt {attempt + 1}/{self.max_retries + 1})"
             ),
             on_exhausted=lambda _exc: logger.error(
-                f"Max retries ({self.max_retries}) exceeded for Instagram publish"
+                f"Max retries ({self.max_retries}) exceeded for Instagram container creation"
             ),
         )
 
-    def _publish(self, caption: str, image_url: str | None) -> str:
-        instagram_rate_limiter.acquire()
-
-        if not image_url or not image_url.strip():
-            raise DeterministicError(
-                "Instagram media creation requires image_url for /media endpoint",
-                stage="instagram_publish"
-            )
-
-        return self._publish_with_image(caption, image_url)
+        return retry_on_transient(
+            lambda: self._publish_creation(container_id),
+            max_retries=self.max_retries,
+            backoff="exponential",
+            exponential_base=2.0,
+            jitter=True,
+            on_retry=lambda attempt, sleep, _exc: logger.warning(
+                f"Retrying Instagram media publish in {sleep:.2f}s "
+                f"(attempt {attempt + 1}/{self.max_retries + 1}) for container {container_id}"
+            ),
+            on_exhausted=lambda _exc: logger.error(
+                f"Max retries ({self.max_retries}) exceeded for Instagram media publish "
+                f"for container {container_id}"
+            ),
+        )
 
     def _post_form(self, url: str, payload: dict, stage: str) -> dict:
-        response = requests.post(url, data=payload, timeout=self.timeout)
+        response = requests.post(url, params=payload, timeout=self.timeout)
 
         if not response.ok:
             _handle_api_error(response, stage)
@@ -123,7 +134,8 @@ class InstagramClient:
         except ValueError:
             raise DeterministicError("Instagram API returned invalid JSON", stage=stage)
 
-    def _publish_with_image(self, caption: str, image_url: str) -> str:
+    def _create_image_container(self, caption: str, image_url: str) -> str:
+        instagram_rate_limiter.acquire()
         url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media"
         payload = {
             "image_url": image_url,
@@ -137,9 +149,10 @@ class InstagramClient:
         if not container_id:
             raise DeterministicError("No container ID returned", stage="instagram_publish")
 
-        return self._publish_creation(container_id)
+        return container_id
 
     def _publish_creation(self, container_id: str) -> str:
+        instagram_rate_limiter.acquire()
         url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media_publish"
         payload = {
             "creation_id": container_id,
