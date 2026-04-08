@@ -2,6 +2,7 @@ from app.core.logger import get_logger
 from app.core.exception import DeterministicError
 from app.services.sheet_client import SheetClient
 from app.services.llm_client import llm_client
+from app.services.instagram_client import instagram_client
 
 
 logger = get_logger(__name__)
@@ -25,7 +26,7 @@ def process_row(row_id: int):
 
         transformed_caption = llm_client.transform_caption(row["post_text"])
 
-        instagram_post_id = "23523523" #hardcoded random id
+        instagram_post_id = instagram_client.publish_post(transformed_caption, row["image_url"])
 
         
         sheet.update_success(row_id, instagram_post_id)
