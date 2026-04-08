@@ -124,7 +124,17 @@ class InstagramClient:
         )
 
     def _post_form(self, url: str, payload: dict, stage: str) -> dict:
-        response = requests.post(url, params=payload, timeout=self.timeout)
+        try:
+            response = requests.post(url, params=payload, timeout=self.timeout)
+        except requests.Timeout as exc:
+            raise TransientError(
+                f"Instagram request timed out after {self.timeout}s",
+                stage=stage
+            ) from exc
+        except requests.ConnectionError as exc:
+            raise TransientError("Instagram connection error", stage=stage) from exc
+        except requests.RequestException as exc:
+            raise TransientError("Instagram transport error", stage=stage) from exc
 
         if not response.ok:
             _handle_api_error(response, stage)
