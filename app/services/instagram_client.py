@@ -103,30 +103,25 @@ class InstagramClient:
 
     def _publish(self, caption: str, image_url: str | None) -> str:
         instagram_rate_limiter.acquire()
-        
-        if image_url:
-            return self._publish_with_image(caption, image_url)
-        return self._publish_container(caption)
 
-    def _publish_container(self, caption: str) -> str:
-        url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media"
-        payload = {
-            "caption": caption,
-            "access_token": self.access_token
-        }
+        if not image_url or not image_url.strip():
+            raise DeterministicError(
+                "Instagram media creation requires image_url for /media endpoint",
+                stage="instagram_publish"
+            )
 
-        response = requests.post(url, json=payload, timeout=self.timeout)
+        return self._publish_with_image(caption, image_url)
+
+    def _post_form(self, url: str, payload: dict, stage: str) -> dict:
+        response = requests.post(url, data=payload, timeout=self.timeout)
 
         if not response.ok:
-            _handle_api_error(response, "instagram_publish")
+            _handle_api_error(response, stage)
 
-        data = response.json()
-        container_id = data.get("id")
-
-        if not container_id:
-            raise DeterministicError("No container ID returned", stage="instagram_publish")
-
-        return self._publish_creation(container_id)
+        try:
+            return response.json()
+        except ValueError:
+            raise DeterministicError("Instagram API returned invalid JSON", stage=stage)
 
     def _publish_with_image(self, caption: str, image_url: str) -> str:
         url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media"
@@ -136,12 +131,7 @@ class InstagramClient:
             "access_token": self.access_token
         }
 
-        response = requests.post(url, json=payload, timeout=self.timeout)
-
-        if not response.ok:
-            _handle_api_error(response, "instagram_publish")
-
-        data = response.json()
+        data = self._post_form(url, payload, "instagram_publish")
         container_id = data.get("id")
 
         if not container_id:
@@ -156,12 +146,7 @@ class InstagramClient:
             "access_token": self.access_token
         }
 
-        response = requests.post(url, json=payload, timeout=self.timeout)
-
-        if not response.ok:
-            _handle_api_error(response, "instagram_publish")
-
-        data = response.json()
+        data = self._post_form(url, payload, "instagram_publish")
         post_id = data.get("id")
 
         if not post_id:
