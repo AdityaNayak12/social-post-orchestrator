@@ -82,11 +82,11 @@ class InstagramClient:
 
     def publish_post(self, caption: str, image_url: str) -> str:
         if not caption or not caption.strip():
-            raise DeterministicError("Empty caption provided", stage="instagram_publish")
+            raise DeterministicError("Empty caption provided", stage="instagram_publish_creation")
         if not image_url or not image_url.strip():
             raise DeterministicError(
                 "image_url is required for Instagram publish via /media endpoint",
-                stage="instagram_publish"
+                stage="instagram_publish_creation"
             )
 
         stats = instagram_rate_limiter.get_stats()
@@ -157,7 +157,7 @@ class InstagramClient:
         container_id = data.get("id")
 
         if not container_id:
-            raise DeterministicError("No container ID returned", stage="instagram_publish")
+            raise DeterministicError("No container ID returned", stage="instagram_publish_creation") 
 
         return container_id
 
@@ -169,11 +169,11 @@ class InstagramClient:
             "access_token": self.access_token
         }
 
-        data = self._post_form(url, payload, "instagram_publish")
+        data = self._post_form(url, payload, "instagram_publish_creation")
         post_id = data.get("id")
 
         if not post_id:
-            raise DeterministicError("No post ID returned after publish", stage="instagram_publish")
+            raise DeterministicError("No post ID returned after publish", stage="instagram_publish_creation")
 
         logger.info(f"Successfully published Instagram post: {post_id}")
         return post_id
