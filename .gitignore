@@ -69,3 +69,5 @@ Thumbs.db
 # ----------------------------
 *.sqlite3
 *.db
+
+test_api.py

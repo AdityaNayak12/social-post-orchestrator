@@ -88,7 +88,7 @@ class SheetClient:
         return {
             "status": row[0] if len(row) > 0 else "pending",
             "post_text": row[1] if len(row) > 1 else "",
-            "img_url": row[4] if len(row) > 4 else None,
+            "image_url": row[4] if len(row) > 4 else None,
         }
 
     def update_status(self, row_id: int, status: str):
