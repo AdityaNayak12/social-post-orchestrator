@@ -12,15 +12,14 @@ def process_row(row_id: int):
     logger.info(f"Processing row {row_id}")
     try:
 
-
         logger.info("fetching data from google sheet")
 
         row = sheet.get_row(row_id)
 
 
-        if row["status"]!="pending":
+        if row["status"] != "pending":
             logger.info("Row not in pending state, ignored")
-            return{"status": "ignored", "row_id": row_id}
+            return {"status": "ignored", "row_id": row_id}
         
         sheet.update_status(row_id, "processing")
 
@@ -53,13 +52,3 @@ def process_row(row_id: int):
             "stage": "unknown",
             "message": "Internal workflow error"
         }
-
-
-def transform_stub(text: str):
-    logger.info("Transforming content (stub)")
-    return "Instagram optimized caption #hashtag"
-
-
-def publish_stub(caption: str, image_url: str):
-    logger.info("Publishing to Instagram (stub)")
-    return "123456789"
