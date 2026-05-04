@@ -49,10 +49,10 @@ def _validate_row_id(row_id: int) -> None:
     if row_id < 1:
         raise ValueError(f"row_id must be >= 1, got {row_id}")
 
-
+ 
 class SheetClient:
     def __init__(self, sheet_name: str | None = None):
-        self.spreadsheet_id = settings.GOOGLE_SPREADSHEET_ID
+        self.spreadsheet_id = settings.GOOGLE_SPREADSHEET_ID 
         self.sheet_name = sheet_name or getattr(settings, "GOOGLE_SHEET_NAME", "Sheet1")
         self._service = None
 
@@ -66,7 +66,7 @@ class SheetClient:
         _validate_row_id(row_id)
         logger.info(f"Fetching row {row_id} from sheet '{self.sheet_name}'")
 
-        range_name = f"{self.sheet_name}!A{row_id}:D{row_id}"
+        range_name = f"{self.sheet_name}!A{row_id}:E{row_id}"
 
         try:
             result = self.service.spreadsheets().values().get(
@@ -88,6 +88,7 @@ class SheetClient:
         return {
             "status": row[0] if len(row) > 0 else "pending",
             "post_text": row[1] if len(row) > 1 else "",
+            "img_url": row[4] if len(row) > 4 else None,
         }
 
     def update_status(self, row_id: int, status: str):
