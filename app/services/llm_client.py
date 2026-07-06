@@ -1,11 +1,10 @@
-from httpx import Timeout
+import logging
 from groq import Groq, RateLimitError, APIError, APITimeoutError
 from app.config import settings
 from app.core.exception import TransientError, DeterministicError
-from app.core.logger import get_logger
 from app.core.retry import retry_on_transient
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = "Shorten and transform this text into a catchy Instagram caption. Add relevant hashtags. Keep it concise."
 
@@ -14,7 +13,7 @@ class LLMClient:
     def __init__(self, model: str = "llama-3.3-70b-versatile"):
         self.client = Groq(
             api_key=settings.GROQ_API_KEY,
-            timeout=Timeout(settings.GROQ_TIMEOUT_SECONDS)
+            timeout=settings.GROQ_TIMEOUT_SECONDS
         )
         self.model = model
         self.max_retries = settings.GROQ_MAX_RETRIES
