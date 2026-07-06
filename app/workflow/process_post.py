@@ -1,11 +1,11 @@
-from app.core.logger import get_logger
+import logging
 from app.core.exception import DeterministicError
 from app.services.sheet_client import SheetClient
 from app.services.llm_client import llm_client
 from app.services.instagram_client import instagram_client
 
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 sheet = SheetClient()
 
 def process_row(row_id: int):

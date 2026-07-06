@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Header, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -5,9 +6,8 @@ import secrets
 import asyncio
 from app.config import settings
 from app.workflow.process_post import process_row
-from app.core.logger import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
