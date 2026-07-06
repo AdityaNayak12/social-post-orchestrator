@@ -41,12 +41,3 @@ def retry_on_transient(
                     on_exhausted(e)
                 raise
 
-
-def retry_once(func, *args, **kwargs):
-    return retry_on_transient(
-        lambda: func(*args, **kwargs),
-        max_retries=1,
-        backoff="fixed",
-        delay_seconds=2.0,
-        jitter=False,
-    )
