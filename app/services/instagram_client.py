@@ -1,62 +1,13 @@
 import time
-import threading
+import logging
 import requests
 from app.config import settings
 from app.core.exception import TransientError, DeterministicError
-from app.core.logger import get_logger
 from app.core.retry import retry_on_transient
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 INSTAGRAM_API_BASE = "https://graph.facebook.com/v19.0"
-
-INSTAGRAM_RATE_LIMIT_MAX = 200
-INSTAGRAM_RATE_LIMIT_WINDOW = 3600
-
-
-class RateLimiter:
-    def __init__(self, max_requests: int, window_seconds: int):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-        self.requests: list[float] = []
-        self._lock = threading.Lock()
-
-    def _clean_old_requests(self, now: float) -> None:
-        cutoff = now - self.window_seconds
-        self.requests = [ts for ts in self.requests if ts > cutoff]
-
-    def acquire(self) -> None:
-        with self._lock:
-            now = time.time()
-            self._clean_old_requests(now)
-
-            if len(self.requests) >= self.max_requests:
-                oldest = self.requests[0]
-                wait_time = self.window_seconds - (now - oldest)
-                if wait_time > 0:
-                    raise TransientError(
-                        f"Rate limit exceeded ({self.max_requests}/{self.window_seconds}s). "
-                        f"Wait {wait_time:.0f}s before retrying.",
-                        stage="instagram_rate_limit"
-                    )
-
-            self.requests.append(now)
-
-    def get_stats(self) -> dict:
-        with self._lock:
-            now = time.time()
-            self._clean_old_requests(now)
-            return {
-                "requests_remaining": self.max_requests - len(self.requests),
-                "requests_in_window": len(self.requests),
-                "window_seconds": self.window_seconds
-            }
-
-
-instagram_rate_limiter = RateLimiter(
-    max_requests=INSTAGRAM_RATE_LIMIT_MAX,
-    window_seconds=INSTAGRAM_RATE_LIMIT_WINDOW
-)
 
 
 def _handle_api_error(response: requests.Response, stage: str) -> None:
@@ -88,9 +39,6 @@ class InstagramClient:
                 "image_url is required for Instagram publish via /media endpoint",
                 stage="instagram_publish_creation"
             )
-
-        stats = instagram_rate_limiter.get_stats()
-        logger.info(f"Instagram rate limit: {stats['requests_remaining']} requests remaining")
 
         container_id = retry_on_transient(
             lambda: self._create_image_container(caption, image_url),
@@ -145,7 +93,6 @@ class InstagramClient:
             raise DeterministicError("Instagram API returned invalid JSON", stage=stage)
 
     def _create_image_container(self, caption: str, image_url: str) -> str:
-        instagram_rate_limiter.acquire()
         url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media"
         payload = {
             "image_url": image_url,
@@ -162,7 +109,6 @@ class InstagramClient:
         return container_id
 
     def _publish_creation(self, container_id: str) -> str:
-        instagram_rate_limiter.acquire()
         url = f"{INSTAGRAM_API_BASE}/{self.account_id}/media_publish"
         payload = {
             "creation_id": container_id,
