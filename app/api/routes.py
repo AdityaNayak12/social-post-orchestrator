@@ -6,6 +6,7 @@ import secrets
 import asyncio
 from app.config import settings
 from app.workflow.process_post import process_row
+from app.core.rate_limiter import rate_limit_dependency
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,7 +23,7 @@ class ProcessRequest(BaseModel):
     row_id: int = Field(..., gt=0, description="The Google Sheet row index")
 
 
-@router.post("/process", dependencies=[Depends(validate_internal_token)])
+@router.post("/process", dependencies=[Depends(validate_internal_token), Depends(rate_limit_dependency)])
 async def process_post(
     request: ProcessRequest,
 ):
