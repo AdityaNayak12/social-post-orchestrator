@@ -8,7 +8,15 @@ RECORDS: dict[str, list[float]] = {}
 LOCK = asyncio.Lock()
 
 async def rate_limit_dependency(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request.headers.get("x-forwarded-for")
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    else:
+        client_ip = request.headers.get("x-real-ip")
+        
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+
     
     async with LOCK:
         now = time.time()
