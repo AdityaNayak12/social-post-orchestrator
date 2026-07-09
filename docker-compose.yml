@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.env:/app/.env
+      - ./social-post-orchestrator.json:/app/social-post-orchestrator.json
+    environment:
+      - PYTHONUNBUFFERED=1
