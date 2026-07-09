@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     API_RATE_LIMIT_MAX_REQUESTS: int = 5
     API_RATE_LIMIT_WINDOW_SECONDS: int = 60
 
+    POLLING_ENABLED: bool = True
+    POLLING_INTERVAL_SECONDS: int = 60
+    POLLING_MAX_ROWS: int = 100
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
