@@ -16,11 +16,12 @@ def validate_internal_token(x_internal_token: Optional[str] = Header(None)):
     if not x_internal_token:
         raise HTTPException(status_code = 401, detail="Missing X-Internal-Token header")
 
-    if not secrets.compare_digest(x_internal_token,settings.INTERNAL_TOKEN):
+    # Compare bytes: compare_digest raises TypeError on non-ASCII str.
+    if not secrets.compare_digest(x_internal_token.encode("utf-8"), settings.INTERNAL_TOKEN.encode("utf-8")):
         raise HTTPException(status_code = 401, detail="Invalid authentication token")
 
 class ProcessRequest(BaseModel):
-    row_id: int = Field(..., gt=0, description="The Google Sheet row index")
+    row_id: int = Field(..., ge=2, description="The Google Sheet row number (row 1 is the header)")
 
 
 @router.post("/process", dependencies=[Depends(validate_internal_token), Depends(rate_limit_dependency)])
@@ -37,6 +38,4 @@ async def process_post(
 
 @router.get("/health")
 async def health_check():
-    return {"status": "OK"}
-
-
+    return {"status": "OK", "polling_enabled": settings.POLLING_ENABLED, "dry_run": settings.DRY_RUN}

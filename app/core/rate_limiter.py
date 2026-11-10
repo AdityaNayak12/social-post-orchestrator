@@ -8,21 +8,18 @@ RECORDS: dict[str, list[float]] = {}
 LOCK = asyncio.Lock()
 
 async def rate_limit_dependency(request: Request):
-    client_ip = request.headers.get("x-forwarded-for")
-    if client_ip:
-        client_ip = client_ip.split(",")[0].strip()
-    else:
-        client_ip = request.headers.get("x-real-ip")
-        
-    if not client_ip:
-        client_ip = request.client.host if request.client else "unknown"
+    # Only the socket peer address: X-Forwarded-For / X-Real-IP are client-controlled and spoofable.
+    # Behind a trusted proxy, run uvicorn with --proxy-headers --forwarded-allow-ips=<proxy ip>.
+    client_ip = request.client.host if request.client else "unknown"
 
-    
     async with LOCK:
         now = time.time()
         cutoff = now - settings.API_RATE_LIMIT_WINDOW_SECONDS
-        
-        # Clean up old requests
+
+        # Drop clients with no requests inside the window so the dict does not grow forever.
+        for ip in [ip for ip, ts in RECORDS.items() if not ts or ts[-1] <= cutoff]:
+            del RECORDS[ip]
+
         RECORDS[client_ip] = [t for t in RECORDS.get(client_ip, []) if t > cutoff]
 
         # Check if limit is exceeded
